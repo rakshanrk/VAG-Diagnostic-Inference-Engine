@@ -206,13 +206,10 @@
             async function sendAnswer(answerStr) {
                 if (!currentNodeId) return;
                 
-                // Record the reasoning step into the Audit Trail before moving on
-                const currentQuestion = textDisplay.textContent;
-                auditTrail.push(`Answered <strong style="color: ${answerStr === 'yes' ? 'var(--accent-yes)' : 'var(--accent-no)'}">${answerStr.toUpperCase()}</strong> to: <em>"${currentQuestion}"</em>`);
-                
                 await processEngineTransition({
                     current_node: currentNodeId,
-                    answer: answerStr
+                    answer: answerStr,
+                    history: auditTrail
                 });
             }
 
@@ -240,6 +237,11 @@
 
                     // Update our client state
                     currentNodeId = node.id;
+                    
+                    // Sync the memory audit trail from the backend Inference Engine
+                    if (node.audit_trail) {
+                        auditTrail = node.audit_trail;
+                    }
 
                     // Dynamically render Question or Final Diagnosis
                     if (node.type === 'question') {

@@ -2,9 +2,7 @@ from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
-# ==========================================
-# KNOWLEDGE BASE: VW Polo GT TSI (Early 2015)
-# ==========================================
+# KNOWLEDGE BASE: VW Polo GT TSI
 # This dictionary acts as our formal Knowledge Representation.
 # Each key represents a node in the decision tree.
 # 'type' determines if the Inference Engine should ask a question or output a diagnosis.
@@ -63,64 +61,50 @@ diagnostic_kb = {    "start": {"type": "question", "text": "Does the primary sym
 # ==========================================
 # INFERENCE ENGINE (Rule-Based Decision Tree)
 # ==========================================
-# This function acts as the core logical engine for our rule-based system.
-# It receives the user's current position within the Knowledge Base (the node ID)
-# and evaluates the branch to take based on the user's Boolean response (Yes/No).
-
-def get_next_node(current_node_id, user_answer):
-    # Step 1: Retrieve the current node definition from the Knowledge Base dictionary.
+def get_next_node(current_node_id, user_answer, history_log):
     current_node = diagnostic_kb.get(current_node_id)
     
-    # Step 2: Safety Check. If the node doesn't exist, halt and return an error state.
     if not current_node:
-        return {"type": "diagnosis", "text": "Error: Node not found in Knowledge Base.", "id": "error"}
+        return {"type": "diagnosis", "text": "Error: Node not found.", "id": "error", "audit_trail": history_log}
         
-    # Step 3: Forward Chaining Route Selection.
-    # By analyzing the user's input, we determine the pointer to the next logical concept in the tree.
+    history_log.append(f"Q: {current_node['text']} -> A: {user_answer.upper()}")
+        
     if user_answer.lower() == 'yes':
         next_node_id = current_node.get('yes')
     else:
         next_node_id = current_node.get('no')
         
-    # Step 4: Retrieve the next node payload.
     next_node_data = diagnostic_kb.get(next_node_id)
     
-    # Step 5: Inject the node ID into the dictionary so the frontend 
-    # can explicitly track its state in the overarching graph.
     if next_node_data:
         next_node_data['id'] = next_node_id 
+        next_node_data['audit_trail'] = history_log
         
     return next_node_data
 
-
 # --- FLASK ROUTES ---
 
-# Serves the main UI page
 @app.route('/')
 def index():
     return render_template('index.html')
 
-
-# The API endpoint that acts as the interface to the Inference Engine
 @app.route('/ask', methods=['POST'])
 def ask_engine():
     data = request.json
     
-    # Extract the current state from the incoming request payload
     current_node_id = data.get('current_node')
-    user_answer = data.get('answer') # Expecting 'yes' or 'no'
+    user_answer = data.get('answer') 
+    history_log = data.get('history', []) 
     
-    # If starting fresh, return the initial 'start' node without processing previous answers
     if not current_node_id or not user_answer:
         start_node = diagnostic_kb.get('start')
         start_node['id'] = 'start'
+        start_node['audit_trail'] = []
         return jsonify({"node": start_node})
         
-    # Pass execution to the purely functional Inference Engine
-    next_node = get_next_node(current_node_id, user_answer)
+    next_node = get_next_node(current_node_id, user_answer, history_log)
     
     return jsonify({"node": next_node})
-
 
 if __name__ == '__main__':
     app.run(debug=True, port=8000)
