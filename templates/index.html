@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expert System: VW Polo GT TSI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --surface-color: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-primary: #3b82f6;
+            --accent-yes: #10b981;
+            --accent-yes-hover: #059669;
+            --accent-no: #ef4444;
+            --accent-no-hover: #dc2626;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        h1 {
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #60a5fa, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 2.5rem;
+        }
+
+        p.subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .container {
+            background: var(--surface-color);
+            padding: 3rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .question-box {
+            font-size: 1.5rem;
+            font-weight: 500;
+            margin-bottom: 2.5rem;
+            line-height: 1.4;
+            transition: opacity 0.3s ease;
+        }
+
+        .diagnosis-box {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 2.5rem;
+            line-height: 1.5;
+            color: #fbbf24;
+            padding: 1.5rem;
+            background: rgba(245, 158, 11, 0.1);
+            border-left: 4px solid #fbbf24;
+            border-radius: 0.5rem;
+            text-align: left;
+            transition: opacity 0.3s ease;
+        }
+
+        .buttons-grid {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+        }
+
+        .btn {
+            border: none;
+            padding: 1rem 2.5rem;
+            border-radius: 0.75rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            color: white;
+            flex: 1;
+            max-width: 200px;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn-yes {
+            background-color: var(--accent-yes);
+            box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.39);
+        }
+
+        .btn-yes:hover {
+            background-color: var(--accent-yes-hover);
+        }
+
+        .btn-no {
+            background-color: var(--accent-no);
+            box-shadow: 0 4px 14px 0 rgba(239, 68, 68, 0.39);
+        }
+
+        .btn-no:hover {
+            background-color: var(--accent-no-hover);
+        }
+
+        .btn-restart {
+            background-color: var(--text-secondary);
+            margin-top: 2rem;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            max-width: none;
+            width: auto;
+            align-self: center;
+        }
+
+        .btn-restart:hover {
+            background-color: #64748b;
+        }
+
+        /* Utility for smooth transitions */
+        .fade-out {
+            opacity: 0;
+        }
+        
+        #contentArea {
+            transition: opacity 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>VAG Diagnostic AI</h1>
+    </div>
+
+    <div class="container">
+        <div id="contentArea">
+            <div id="textDisplay" class="question-box">Initializing Knowledge Base...</div>
+            
+            <div id="buttonArea" class="buttons-grid">
+                <button id="btnYes" class="btn btn-yes">Yes</button>
+                <button id="btnNo" class="btn btn-no">No</button>
+            </div>
+            
+            <button id="btnRestart" class="btn btn-restart" style="display: none;">Start New Diagnosis</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const textDisplay = document.getElementById('textDisplay');
+            const btnYes = document.getElementById('btnYes');
+            const btnNo = document.getElementById('btnNo');
+            const btnRestart = document.getElementById('btnRestart');
+            const buttonArea = document.getElementById('buttonArea');
+            const contentArea = document.getElementById('contentArea');
+
+            // This variable holds our state in the Inference Engine
+            let currentNodeId = null;
+            
+            // This array acts as the Expert System's Memory (Audit Trail)
+            let auditTrail = [];
+
+            // Fetch the very first node to start the system
+            initEngine();
+
+            btnYes.addEventListener('click', () => sendAnswer('yes'));
+            btnNo.addEventListener('click', () => sendAnswer('no'));
+            btnRestart.addEventListener('click', initEngine);
+
+            // Resets the system to the beginning
+            async function initEngine() {
+                currentNodeId = null;
+                auditTrail = [];
+                await processEngineTransition({});
+            }
+
+            // Sends the user's answer to the Flask Backend Expert Engine
+            async function sendAnswer(answerStr) {
+                if (!currentNodeId) return;
+                
+                // Record the reasoning step into the Audit Trail before moving on
+                const currentQuestion = textDisplay.textContent;
+                auditTrail.push(`Answered <strong style="color: ${answerStr === 'yes' ? 'var(--accent-yes)' : 'var(--accent-no)'}">${answerStr.toUpperCase()}</strong> to: <em>"${currentQuestion}"</em>`);
+                
+                await processEngineTransition({
+                    current_node: currentNodeId,
+                    answer: answerStr
+                });
+            }
+
+            // Handles the network fetch and the smooth UI transition
+            async function processEngineTransition(payload) {
+                try {
+                    // Fade out before replacing text
+                    contentArea.classList.add('fade-out');
+                    
+                    // Allow CSS transition to begin
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                    
+                    const response = await fetch('/ask', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    const data = await response.json();
+                    const node = data.node;
+                    
+                    if (!node) {
+                        throw new Error("Invalid node structure from Engine");
+                    }
+
+                    // Update our client state
+                    currentNodeId = node.id;
+
+                    // Dynamically render Question or Final Diagnosis
+                    if (node.type === 'question') {
+                        textDisplay.className = 'question-box';
+                        textDisplay.textContent = node.text;
+                        
+                        buttonArea.style.display = 'flex';
+                        btnRestart.style.display = 'none';
+                    } else if (node.type === 'diagnosis') {
+                        textDisplay.className = 'diagnosis-box';
+                        
+                        // Construct the Audit Trail HTML
+                        let trailHTML = `<div style="margin-top:2rem; padding-top:1.5rem; border-top:1px solid rgba(255,255,255,0.1); font-size:1rem; color: #94a3b8; font-weight: 400;">`;
+                        trailHTML += `<h4 style="margin-bottom:1rem; color: #cbd5e1; font-weight: 600;">Expert Reasoning Audit Trail:</h4>`;
+                        trailHTML += `<ul style="list-style-type: none; padding-left: 0; text-align: left; line-height: 1.6; display: flex; flex-direction: column; gap: 0.5rem;">`;
+                        
+                        auditTrail.forEach((step, index) => {
+                            trailHTML += `<li><span style="opacity:0.5; margin-right:8px;">Step ${index + 1}:</span> ${step}</li>`;
+                        });
+                        
+                        trailHTML += `</ul></div>`;
+
+                        textDisplay.innerHTML = node.text + trailHTML;
+                        
+                        buttonArea.style.display = 'none';
+                        btnRestart.style.display = 'block';
+                    }
+
+                    // Fade UI back in
+                    contentArea.classList.remove('fade-out');
+
+                } catch (err) {
+                    console.error("Inference Engine Network Error:", err);
+                    textDisplay.className = 'diagnosis-box';
+                    textDisplay.textContent = "Error communicating with the Backend Inference Engine. Check if python app.py is running.";
+                    buttonArea.style.display = 'none';
+                    btnRestart.style.display = 'block';
+                    contentArea.classList.remove('fade-out');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
